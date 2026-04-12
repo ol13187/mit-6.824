@@ -12,7 +12,7 @@
 8. 对于map阶段后生成的中间文件(intermediate files)需要被命名为`mr-X-Y`，其中X为map的任务编号，Y为reduce的任务编号。
 9. 读写中间文件可以参考lab文档，具体是`encoding/json`包。
 10. map阶段的worker可以采用`ihash(key)%nReduce`来选取处理reduce的worker。
-11. 使用临时文件来避免crash的情况。具体地，先用`ioutil.TempFile`创建一个临时文件，写入数据后再用`os.Rename`修改成所需的最终文件名。
+11. 使用临时文件来避免crash的情况。具体地，先用`os.CreateTemp`创建一个临时文件，写入数据后再用`os.Rename`修改成所需的最终文件名。
 
 ## 运行流程
 
@@ -27,7 +27,7 @@
 
 ## 想法
 
-1. 处于效率考虑，使用条件变量`sync.WaitGroup`来代替Sleep。
+1. 处于并发考虑，使用锁`sync.Mutex`来完成对 `coordinator`的读写操作。
 2. RPC的IDL的规范: 入参和返回结构体定义在`rpc.go`中，而具体的Service定义在`worker.go`中，实现在`coordinator.go`中。
 3. 为什么不传入执行map的worker数量？ 因为当我们开启coordinator进程后，并不依赖它启动worker去执行map任务，而是需要我们自行启动 worker集群，让coordinator监听并接收请求，被动布置任务。
 4. worker和worker间，worker和coordinator间需要用到RPC通信
@@ -44,4 +44,4 @@
    1. 任务ID
    2. 任务类型
    3. 要处理的文件名
-   4. 被分配到的reduce ID
+   4. 被分配到的reduce

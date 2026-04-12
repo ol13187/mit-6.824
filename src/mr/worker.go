@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"sort"
-	"strings"
 )
 import "log"
 import "net/rpc"
@@ -86,7 +85,7 @@ func doMapTask(mapf func(string, string) []KeyValue, taskId int, filename string
 	for y := 0; y < nReduce; y++ {
 		//4.1 文件命名和临时文件创建
 		intermediateFilename := fmt.Sprintf("mr-%d-%d", taskId, y)
-		tempFile, err := os.CreateTemp("./", intermediateFilename)
+		tempFile, err := os.CreateTemp("./", intermediateFilename+"*")
 		if err != nil {
 			log.Fatalf("Map:cannot create temp file: %v", intermediateFilename)
 		}
@@ -124,10 +123,9 @@ func doReduceTask(reducef func(string, []string) string, taskId int, reduceId in
 		if file.IsDir() {
 			continue
 		}
-		//2.1 判断当前目录下的文件是否是本reduce worker需要执行的中间文件
-		hasRightPrefix := strings.HasPrefix(file.Name(), "mr-")
-		hasRightSuffix := strings.HasSuffix(file.Name(), fmt.Sprintf("-%d", reduceId))
-		if hasRightPrefix && hasRightSuffix {
+		// 2.1 仅接收标准中间文件名: mr-<mapTaskId>-<reduceId>
+		var mapTaskId, fileReduceId int
+		if n, err := fmt.Sscanf(file.Name(), "mr-%d-%d", &mapTaskId, &fileReduceId); n == 2 && err == nil && fileReduceId == reduceId {
 			//2.2 若需要读取，则读取中间文件内容
 			file, err := os.Open(file.Name())
 			if err != nil {
@@ -147,7 +145,7 @@ func doReduceTask(reducef func(string, []string) string, taskId int, reduceId in
 	}
 	//3. 创建临时文件
 	filename := fmt.Sprintf("mr-out-%d", reduceId)
-	tempFile, err := os.CreateTemp("./", filename)
+	tempFile, err := os.CreateTemp("./", filename+"*")
 	if err != nil {
 		log.Fatalf("Reduce:cannot create %v", filename)
 	}
